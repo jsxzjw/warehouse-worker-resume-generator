@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || ""
+  apiKey: process.env.OPENAI_API_KEY || "",
+  baseURL: "https://api.evolink.ai/v1"
 });
 
 interface GenerateRequest {
@@ -26,6 +27,7 @@ const ErrorCodes = {
   API_ERROR: "API_ERROR",
   TIMEOUT: "TIMEOUT",
   RATE_LIMIT: "RATE_LIMIT",
+  INSUFFICIENT_QUOTA: "INSUFFICIENT_QUOTA",
   UNKNOWN: "UNKNOWN"
 } as const;
 
@@ -37,7 +39,7 @@ function createErrorResponse(error: ApiError, status: number): Response {
 }
 
 const RETRY_COUNT = 1;
-const TIMEOUT_MS = 30000; // 30 seconds
+const TIMEOUT_MS = 60000; // 60 seconds
 
 async function fetchWithRetry(
   fn: () => Promise<OpenAI.Chat.Completions.ChatCompletion>,
@@ -65,7 +67,8 @@ function isRetryableError(error: unknown): boolean {
     return (
       message.includes("timeout") ||
       message.includes("network") ||
-      message.includes("econnreset")
+      message.includes("econnreset") ||
+      message.includes("econnrefused")
     );
   }
   return false;
@@ -78,18 +81,37 @@ function isRateLimitError(error: unknown): boolean {
   return false;
 }
 
-const RESUME_GENERATION_PROMPT = `You are a professional resume writer specializing in warehouse and logistics positions. Generate a polished, professional resume based on the information provided.
+const RESUME_GENERATION_PROMPT = `You are an expert resume writer specializing in warehouse, logistics, and supply chain positions. Create a highly professional, ATS-optimized resume in clean plain text format.
 
-Requirements:
-1. Format as clean, professional plain text (no markdown formatting like ** or ##)
-2. Structure with clear sections: CONTACT INFORMATION, PROFESSIONAL SUMMARY, WORK EXPERIENCE, EDUCATION, SKILLS
-3. Include optional sections if provided: CERTIFICATIONS, LANGUAGES
-4. Use strong action verbs and quantifiable achievements
-5. Keep language professional but accessible
-6. Focus on relevant warehouse skills: inventory management, forklift operation, shipping/receiving, safety compliance, etc.
-7. Format contact info at the top in a standard business format
-8. Use bullet points for experience entries
-9. Keep total length to 1-2 pages worth of content
+CRITICAL FORMATTING RULES:
+- Use ONLY plain text - NO markdown, NO **bold**, NO ## headers
+- Use ALL CAPS for section headers followed by a colon
+- Section headers must be: CONTACT INFORMATION:, PROFESSIONAL SUMMARY:, WORK EXPERIENCE:, EDUCATION:, SKILLS:, CERTIFICATIONS:, LANGUAGES:
+- Put a blank line before each section header
+- Use dash (-) for all bullet points
+- Put company/position names on their own lines (not on the same line as dates)
+- Use specific, quantifiable achievements (numbers, percentages, results)
+
+STRUCTURE:
+1. CONTACT INFORMATION: - Name on first line, contact details on following lines
+2. PROFESSIONAL SUMMARY: - 2-3 lines of powerful career summary
+3. WORK EXPERIENCE: - For each job:
+   - Job Title on one line
+   - Company Name, Location | Employment Dates on next line
+   - 3-5 bullet points with achievements
+   - Start with action verbs: Managed, Supervised, Operated, Processed, Maintained, Coordinated
+4. EDUCATION: - Degree, School Name, Location | Graduation Year
+5. SKILLS: - Technical skills, certifications, equipment operation
+6. CERTIFICATIONS: - Each on separate line if multiple
+7. LANGUAGES: - Format as "Language - Proficiency Level"
+
+CONTENT GUIDELINES:
+- Highlight warehouse-specific skills: inventory control, forklift operation, shipping/receiving, order fulfillment
+- Emphasize safety records and compliance
+- Include productivity improvements and cost savings
+- Show leadership and teamwork
+- Use professional industry terminology
+- Keep total content under 800 words
 
 User Information:
 `;
@@ -101,7 +123,7 @@ export async function POST(req: Request): Promise<Response> {
       return createErrorResponse(
         {
           code: ErrorCodes.MISSING_API_KEY,
-          message: "OpenAI API key is not configured",
+          message: "API key is not configured",
           details: "Please set OPENAI_API_KEY environment variable"
         },
         500
@@ -136,10 +158,10 @@ export async function POST(req: Request): Promise<Response> {
 
     const fullPrompt = RESUME_GENERATION_PROMPT + body.prompt;
 
-    // Fetch with retry logic
+    // Fetch with retry logic using OpenAI SDK
     const completion = await fetchWithRetry(async () => {
       return await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gemini-2.5-pro",
         messages: [
           {
             role: "system",
@@ -175,15 +197,29 @@ export async function POST(req: Request): Promise<Response> {
     });
 
   } catch (error: unknown) {
-    console.error("OpenAI API error:", error);
+    console.error("API error:", error);
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Handle insufficient quota (balance)
+    if (errorMessage.includes("余额不足") || errorMessage.includes("insufficient") || errorMessage.includes("quota")) {
+      return createErrorResponse(
+        {
+          code: ErrorCodes.INSUFFICIENT_QUOTA,
+          message: "Insufficient account balance",
+          details: "Please top up your account balance to continue generating resumes."
+        },
+        402
+      );
+    }
 
     // Handle rate limiting specifically
     if (isRateLimitError(error)) {
       return createErrorResponse(
         {
           code: ErrorCodes.RATE_LIMIT,
-          message: "Rate limit exceeded",
-          details: "Too many requests. Please try again in a moment."
+          message: "Too many requests",
+          details: "Please wait a moment before trying again."
         },
         429
       );
@@ -195,18 +231,32 @@ export async function POST(req: Request): Promise<Response> {
         {
           code: ErrorCodes.TIMEOUT,
           message: "Request timeout",
-          details: "The resume generation took too long. Please try again."
+          details: "The resume generation is taking longer than expected. Please try again."
         },
         408
       );
     }
 
-    // Generic error response
+    // Generic error response with more helpful details
+    let userMessage = "Unable to generate resume. Please try again.";
+    let details = errorMessage;
+
+    if (errorMessage.includes("401") || errorMessage.includes("403")) {
+      userMessage = "API authentication failed";
+      details = "Please check your API key configuration.";
+    } else if (errorMessage.includes("404")) {
+      userMessage = "API service not found";
+      details = "Please check your API endpoint configuration.";
+    } else if (errorMessage.includes("network") || errorMessage.includes("ECONNREFUSED")) {
+      userMessage = "Network connection error";
+      details = "Please check your internet connection and try again.";
+    }
+
     return createErrorResponse(
       {
         code: ErrorCodes.API_ERROR,
-        message: "Failed to generate resume",
-        details: error instanceof Error ? error.message : "Unknown error occurred"
+        message: userMessage,
+        details
       },
       500
     );

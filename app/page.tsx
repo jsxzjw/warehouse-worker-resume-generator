@@ -42,20 +42,25 @@ const STORAGE_KEYS = {
   name: "wr_name",
   contact: "wr_contact",
   skills: "wr_skills",
+  skillInput: "wr_skill_input",
   objective: "wr_objective",
   certifications: "wr_certifications",
   languages: "wr_languages",
   address: "wr_address",
   theme: "wr_theme",
-  language: "wr_language"
+  language: "wr_language",
+  experience: "wr_experience",
+  education: "wr_education",
+  resume: "wr_resume",
+  template: "wr_template"
 } as const;
 
 // Translations
 const translations = {
   en: {
     // Header
-    appTitle: "Warehouse Worker Resume Generator",
-    appSubtitle: "Professional Warehouse Worker Resumes",
+    appTitle: "ResumePro - Professional Resume Builder",
+    appSubtitle: "Create ATS-friendly resumes in seconds with AI",
     resetForm: "Reset form",
     switchToLight: "Switch to light mode",
     switchToDark: "Switch to dark mode",
@@ -113,6 +118,10 @@ const translations = {
     generateResume: "Generate Resume",
     generating: "Generating...",
     downloadPDF: "Download PDF",
+    selectTemplate: "Select Template",
+    templateModern: "Modern",
+    templateClassic: "Classic",
+    templateProfessional: "Professional",
 
     // Preview
     resumePreview: "Resume Preview",
@@ -153,8 +162,8 @@ const translations = {
   },
   es: {
     // Header
-    appTitle: "Generador de Currculums para Trabajadores de Almacén",
-    appSubtitle: "Currculums Profesionales para Trabajadores de Almacén",
+    appTitle: "ResumePro - Generador de Currculums Profesionales",
+    appSubtitle: "Crea currculums optimizados para ATS en segundos con IA",
     resetForm: "Restablecer formulario",
     switchToLight: "Cambiar a modo claro",
     switchToDark: "Cambiar a modo oscuro",
@@ -212,6 +221,10 @@ const translations = {
     generateResume: "Generar Currículum",
     generating: "Generando...",
     downloadPDF: "Descargar PDF",
+    selectTemplate: "Seleccionar Plantilla",
+    templateModern: "Moderno",
+    templateClassic: "Clásico",
+    templateProfessional: "Profesional",
 
     // Preview
     resumePreview: "Vista Previa del Currículum",
@@ -252,8 +265,8 @@ const translations = {
   },
   fr: {
     // Header
-    appTitle: "Générateur de CV pour Travailleurs d'Entrepôt",
-    appSubtitle: "CV Professionnels pour Travailleurs d'Entrepôt",
+    appTitle: "ResumePro - Générateur de CV Professionnels",
+    appSubtitle: "Créez des CV optimisés pour les ATS en quelques secondes avec l'IA",
     resetForm: "Réinitialiser le formulaire",
     switchToLight: "Passer en mode clair",
     switchToDark: "Passer en mode sombre",
@@ -311,6 +324,10 @@ const translations = {
     generateResume: "Générer le CV",
     generating: "Génération...",
     downloadPDF: "Télécharger PDF",
+    selectTemplate: "Sélectionner le Modèle",
+    templateModern: "Moderne",
+    templateClassic: "Classique",
+    templateProfessional: "Professionnel",
 
     // Preview
     resumePreview: "Aperçu du CV",
@@ -351,8 +368,8 @@ const translations = {
   },
   de: {
     // Header
-    appTitle: "Lebenslauf-Generator fr Lagerarbeiter",
-    appSubtitle: "Professionelle Lebensläufe fr Lagerarbeiter",
+    appTitle: "ResumePro - Professioneller Lebenslauf-Generator",
+    appSubtitle: "Erstellen Sie ATS-optimierte Lebensläufe in Sekunden mit KI",
     resetForm: "Formular zurcksetzen",
     switchToLight: "Zum hellen Modus wechseln",
     switchToDark: "Zum dunklen Modus wechseln",
@@ -410,6 +427,10 @@ const translations = {
     generateResume: "Lebenslauf Generieren",
     generating: "Generierung...",
     downloadPDF: "PDF Herunterladen",
+    selectTemplate: "Vorlage Auswhlen",
+    templateModern: "Modern",
+    templateClassic: "Klassisch",
+    templateProfessional: "Professionell",
 
     // Preview
     resumePreview: "Lebenslauf-Vorschau",
@@ -483,6 +504,9 @@ export default function Home() {
   // UI state
   const [resume, setResume] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<"modern" | "classic" | "professional">("modern");
+  const [lastGenerateTime, setLastGenerateTime] = useState(0);
+  const GENERATE_COOLDOWN = 3000; // 3 seconds cooldown between requests
   const [errors, setErrors] = useState<FormErrors>({
     name: "",
     contact: "",
@@ -540,56 +564,107 @@ export default function Home() {
     localStorage.setItem(STORAGE_KEYS.theme, darkMode ? "dark" : "light");
   }, [darkMode]);
 
-  // Load saved form data
+  // Load saved form data (only run once on mount)
   useEffect(() => {
     const savedName = localStorage.getItem(STORAGE_KEYS.name);
     const savedContact = localStorage.getItem(STORAGE_KEYS.contact);
     const savedSkills = localStorage.getItem(STORAGE_KEYS.skills);
+    const savedSkillInput = localStorage.getItem(STORAGE_KEYS.skillInput);
     const savedObjective = localStorage.getItem(STORAGE_KEYS.objective);
     const savedCertifications = localStorage.getItem(STORAGE_KEYS.certifications);
     const savedLanguages = localStorage.getItem(STORAGE_KEYS.languages);
     const savedAddress = localStorage.getItem(STORAGE_KEYS.address);
+    const savedExperience = localStorage.getItem(STORAGE_KEYS.experience);
+    const savedEducation = localStorage.getItem(STORAGE_KEYS.education);
+    const savedResume = localStorage.getItem(STORAGE_KEYS.resume);
+    const savedTemplate = localStorage.getItem(STORAGE_KEYS.template) as "modern" | "classic" | "professional" | null;
 
-    setFormData(prev => ({
-      ...prev,
+    // Parse skills safely
+    let parsedSkills: string[] = [];
+    if (savedSkills) {
+      try {
+        const parsed = JSON.parse(savedSkills);
+        parsedSkills = Array.isArray(parsed) ? parsed.filter((s: unknown) => typeof s === 'string' && s.trim() !== '') : [];
+      } catch {
+        parsedSkills = [];
+      }
+    }
+
+    // Parse experience safely
+    let parsedExperience: Entry[] = [{ id: 1, text: "" }];
+    if (savedExperience) {
+      try {
+        const parsed = JSON.parse(savedExperience);
+        parsedExperience = Array.isArray(parsed) && parsed.length > 0 ? parsed : [{ id: 1, text: "" }];
+      } catch {
+        parsedExperience = [{ id: 1, text: "" }];
+      }
+    }
+
+    // Parse education safely
+    let parsedEducation: Entry[] = [{ id: 1, text: "" }];
+    if (savedEducation) {
+      try {
+        const parsed = JSON.parse(savedEducation);
+        parsedEducation = Array.isArray(parsed) && parsed.length > 0 ? parsed : [{ id: 1, text: "" }];
+      } catch {
+        parsedEducation = [{ id: 1, text: "" }];
+      }
+    }
+
+    setFormData({
       name: savedName || "",
       contact: savedContact || "",
-      skills: savedSkills ? JSON.parse(savedSkills) : [],
+      skills: parsedSkills,
+      skillInput: savedSkillInput || "",
       objective: savedObjective || "",
       certifications: savedCertifications || "",
       languages: savedLanguages || "",
-      address: savedAddress || ""
-    }));
+      address: savedAddress || "",
+      experienceList: parsedExperience,
+      educationList: parsedEducation
+    });
+
+    // Restore saved resume and template
+    if (savedResume) {
+      setResume(savedResume);
+    }
+    if (savedTemplate && ["modern", "classic", "professional"].includes(savedTemplate)) {
+      setSelectedTemplate(savedTemplate);
+    }
   }, []);
 
-  // Save form data to localStorage
+  // Save form data to localStorage (batched for better performance)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.name, formData.name);
-  }, [formData.name]);
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.contact, formData.contact);
-  }, [formData.contact]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.skills, JSON.stringify(formData.skills));
-  }, [formData.skills]);
-
-  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.skillInput, formData.skillInput);
     localStorage.setItem(STORAGE_KEYS.objective, formData.objective);
-  }, [formData.objective]);
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.certifications, formData.certifications);
-  }, [formData.certifications]);
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.languages, formData.languages);
-  }, [formData.languages]);
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.address, formData.address);
-  }, [formData.address]);
+  }, [formData.name, formData.contact, formData.skillInput, formData.objective,
+      formData.certifications, formData.languages, formData.address]);
+
+  // Save arrays to localStorage (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.setItem(STORAGE_KEYS.skills, JSON.stringify(formData.skills));
+      localStorage.setItem(STORAGE_KEYS.experience, JSON.stringify(formData.experienceList));
+      localStorage.setItem(STORAGE_KEYS.education, JSON.stringify(formData.educationList));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [formData.skills, formData.experienceList, formData.educationList]);
+
+  // Save resume and template to localStorage
+  useEffect(() => {
+    if (resume) {
+      localStorage.setItem(STORAGE_KEYS.resume, resume);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.resume);
+    }
+    localStorage.setItem(STORAGE_KEYS.template, selectedTemplate);
+  }, [resume, selectedTemplate]);
 
   // Auto-resize textarea
   const autoResizeTextarea = useCallback((key: string, textarea: HTMLTextAreaElement | null) => {
@@ -690,12 +765,20 @@ export default function Home() {
   }, []);
 
   const addSkill = useCallback((e?: React.KeyboardEvent<HTMLInputElement>) => {
-    if ((e?.key === "Enter" || !e) && formData.skillInput.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        skills: [...prev.skills, prev.skillInput.trim()],
-        skillInput: ""
-      }));
+    const trimmedSkill = formData.skillInput.trim();
+    if ((e?.key === "Enter" || !e) && trimmedSkill) {
+      // Don't add duplicate skills
+      setFormData(prev => {
+        const alreadyExists = prev.skills.some(s => s.toLowerCase() === trimmedSkill.toLowerCase());
+        if (alreadyExists) {
+          return { ...prev, skillInput: "" };
+        }
+        return {
+          ...prev,
+          skills: [...prev.skills, trimmedSkill],
+          skillInput: ""
+        };
+      });
       if (e) e.preventDefault();
     }
   }, [formData.skillInput]);
@@ -724,6 +807,12 @@ export default function Home() {
     setErrors({ name: "", contact: "", experience: "", education: "", skills: "" });
     setTouched(new Set());
     setShowResetConfirm(false);
+
+    // Clear all localStorage items
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key);
+    });
+
     addToast(t.formReset, "success");
   }, [addToast, t]);
 
@@ -747,6 +836,17 @@ export default function Home() {
       addToast(t.fixErrors, "error");
       return;
     }
+
+    // Check cooldown to prevent duplicate requests
+    const now = Date.now();
+    const timeSinceLastGenerate = now - lastGenerateTime;
+    if (timeSinceLastGenerate < GENERATE_COOLDOWN) {
+      const remainingTime = Math.ceil((GENERATE_COOLDOWN - timeSinceLastGenerate) / 1000);
+      addToast(`Please wait ${remainingTime} second${remainingTime > 1 ? 's' : ''} before generating again.`, "error");
+      return;
+    }
+
+    setLastGenerateTime(now);
 
     // Generate resume
     const finalSkills = [...formData.skills];
@@ -808,16 +908,16 @@ Address: ${formData.address || "N/A"}
     } finally {
       setLoading(false);
     }
-  }, [formData, addToast, validateName, validateContact, validateExperience, validateEducation, validateSkills, t]);
+  }, [formData, addToast, validateName, validateContact, validateExperience, validateEducation, validateSkills, t, lastGenerateTime, GENERATE_COOLDOWN]);
 
   const handleExportPDF = useCallback(() => {
     if (!resume) {
       addToast(t.generateFirst, "error");
       return;
     }
-    downloadResumePDF({ name: formData.name, resume });
+    downloadResumePDF({ name: formData.name, resume }, { template: selectedTemplate });
     addToast(t.pdfDownloaded, "success");
-  }, [resume, formData.name, addToast, t]);
+  }, [resume, formData.name, selectedTemplate, addToast, t]);
 
   // Character count component
   const CharCounter = ({ current, max }: { current: number; max: number }) => {
@@ -1118,23 +1218,27 @@ Address: ${formData.address || "N/A"}
 
               <div className="p-4">
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {formData.skills.map((skill, i) => (
-                    <span
-                      key={i}
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${darkMode ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" : "bg-indigo-100 text-indigo-700 border border-indigo-200"}`}
-                    >
-                      {skill}
-                      <button
-                        onClick={() => removeSkill(i)}
-                        className="hover:text-red-500 transition-colors"
-                        aria-label={t.removeSkill(skill)}
+                  {formData.skills.map((skill, i) => {
+                    // Skip empty skills
+                    if (!skill.trim()) return null;
+                    return (
+                      <span
+                        key={`${skill}-${i}`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${darkMode ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" : "bg-indigo-100 text-indigo-700 border border-indigo-200"}`}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </span>
-                  ))}
+                        <span>{skill.trim()}</span>
+                        <button
+                          onClick={() => removeSkill(i)}
+                          className="hover:text-red-500 transition-colors p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30"
+                          aria-label={t.removeSkill(skill)}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    );
+                  })}
                 </div>
 
                 <div className="relative">
@@ -1284,7 +1388,37 @@ Address: ${formData.address || "N/A"}
 
             {/* Action Card */}
             <div className={`rounded-2xl shadow-sm border transition-all duration-200 ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}>
-              <div className="p-6">
+              <div className="p-6 space-y-4">
+                {/* Template Selection */}
+                <div>
+                  <label className={`block text-sm font-medium mb-3 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                    {t.selectTemplate}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["modern", "classic", "professional"] as const).map((template) => (
+                      <button
+                        key={template}
+                        onClick={() => setSelectedTemplate(template)}
+                        disabled={loading}
+                        className={`py-3 px-4 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
+                          selectedTemplate === template
+                            ? darkMode
+                              ? "border-indigo-500 bg-indigo-500/20 text-indigo-400"
+                              : "border-indigo-500 bg-indigo-50 text-indigo-700"
+                            : darkMode
+                              ? "border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300"
+                              : "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-600"
+                        } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        {template === "modern" && t.templateModern}
+                        {template === "classic" && t.templateClassic}
+                        {template === "professional" && t.templateProfessional}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Generate Button */}
                 <button
                   onClick={handleGenerate}
                   disabled={loading || !isFormValid}
@@ -1330,8 +1464,126 @@ Address: ${formData.address || "N/A"}
                   <LoadingSkeleton />
                 ) : resume ? (
                   <>
-                    <div className={`rounded-xl p-4 max-h-96 overflow-y-auto transition-colors duration-200 ${darkMode ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-700"}`}>
-                      <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">{resume}</pre>
+                    {/* Show current template badge */}
+                    <div className="mb-4 flex items-center justify-between">
+                      <span className={`text-sm font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        Template: <span className="capitalize">{selectedTemplate}</span>
+                      </span>
+                      <button
+                        onClick={() => setSelectedTemplate(
+                          selectedTemplate === "modern" ? "classic" :
+                          selectedTemplate === "classic" ? "professional" : "modern"
+                        )}
+                        className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${darkMode ? "text-indigo-400 hover:bg-indigo-500/20" : "text-indigo-600 hover:bg-indigo-50"}`}
+                      >
+                        Switch Template
+                      </button>
+                    </div>
+
+                    {/* Resume Preview with Template Styles */}
+                    <div className={`
+                      rounded-xl max-h-96 overflow-y-auto transition-all duration-300
+                      ${selectedTemplate === "modern"
+                        ? "p-5 bg-white text-slate-800 border-l-4 border-blue-600"
+                        : selectedTemplate === "classic"
+                          ? "p-6 bg-stone-50 text-stone-900 border-2 border-stone-200"
+                          : "p-5 bg-slate-50 text-slate-800 border border-slate-200"
+                      }
+                    `}>
+                      <div className={`
+                        whitespace-pre-wrap leading-relaxed
+                        ${selectedTemplate === "modern"
+                          ? "font-sans text-sm"
+                          : selectedTemplate === "classic"
+                            ? "font-serif text-base"
+                            : "font-sans text-sm"
+                        }
+                      `}>
+                        {resume.split("\n").map((line, idx) => {
+                          const isSectionHeader = /^[A-Z][A-Z\s]{4,}:?$/.test(line);
+                          const isJobTitle = /^[A-Z]/.test(line) && line.length < 60 && !line.includes(":") && !line.startsWith("-");
+                          const isBullet = line.trim().startsWith("-");
+                          const content = isBullet ? line.trim().substring(1).trim() : line;
+                          if (!content && !isSectionHeader) return <br key={idx} />;
+
+                          // Modern Template Style
+                          if (selectedTemplate === "modern") {
+                            if (isSectionHeader) {
+                              return (
+                                <div key={idx} className="mt-3 mb-2">
+                                  <div className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 inline-block px-2 py-1 rounded">
+                                    {line.replace(/:/g, "")}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            if (isJobTitle) {
+                              return (
+                                <div key={idx} className="mt-2 mb-1">
+                                  <div className="font-semibold text-slate-800">{line}</div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div key={idx} className={isBullet ? "ml-4 mb-1 flex items-start gap-2" : "mb-1"}>
+                                {isBullet && <span className="mt-0.5 text-blue-500 text-sm">▸</span>}
+                                <span className="text-slate-700">{content}</span>
+                              </div>
+                            );
+                          }
+
+                          // Classic Template Style
+                          if (selectedTemplate === "classic") {
+                            if (isSectionHeader) {
+                              return (
+                                <div key={idx} className="mt-4 mb-2 text-center">
+                                  <div className="text-sm font-bold text-stone-800 uppercase tracking-widest border-b-2 border-stone-400 pb-1 inline-block min-w-full">
+                                    {line.replace(/:/g, "")}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            if (isJobTitle) {
+                              return (
+                                <div key={idx} className="mt-3 mb-1 text-center">
+                                  <div className="font-serif font-bold text-stone-900 text-base">{line}</div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div key={idx} className={isBullet ? "ml-6 mb-1 text-center" : "mb-1 text-center"}>
+                                {isBullet && <span className="text-stone-500 mr-2">♦</span>}
+                                <span className="text-stone-700">{content}</span>
+                              </div>
+                            );
+                          }
+
+                          // Professional Template Style
+                          if (isSectionHeader) {
+                            return (
+                              <div key={idx} className="mt-3 mb-2 flex items-center gap-2">
+                                <div className="flex-shrink-0 w-1 h-5 bg-slate-700 rounded-full"></div>
+                                <div className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                  {line.replace(/:/g, "")}
+                                </div>
+                              </div>
+                            );
+                          }
+                          if (isJobTitle) {
+                            return (
+                              <div key={idx} className="mt-2 mb-1">
+                                <div className="font-bold text-slate-900 text-sm">{line}</div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={idx} className={isBullet ? "ml-5 mb-1 flex items-start gap-2" : "mb-1"}>
+                              {isBullet && <span className="flex-shrink-0 mt-0.5 w-1.5 h-1.5 bg-slate-500 rounded-full"></span>}
+                              <span className="text-slate-600 text-xs">{content}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                     <button
                       onClick={handleExportPDF}
