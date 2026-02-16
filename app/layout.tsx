@@ -13,21 +13,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ResumePro - Professional Resume Builder | Create ATS-Friendly Resumes",
-  description: "Build professional, ATS-optimized resumes in seconds with AI-powered resume builder. Multiple templates, instant PDF download, and designed for job seekers in warehouse, logistics, and supply chain industries.",
-  keywords: "resume builder, CV generator, professional resume, ATS-friendly resume, warehouse worker resume, logistics resume, AI resume builder, resume templates",
-  authors: [{ name: "ResumePro" }],
-  creator: "ResumePro",
-  publisher: "ResumePro",
+  title: "Warehouse Worker Resume Generator - Create ATS-Friendly Resumes",
+  description: "Build professional, ATS-optimized resumes for warehouse workers in seconds with AI-powered resume builder. Multiple templates, instant PDF download.",
+  keywords: "warehouse worker resume, resume builder, CV generator, warehouse resume, logistics resume, ATS-friendly resume, AI resume builder, resume templates",
+  authors: [{ name: "Warehouse Worker Resume Generator" }],
+  creator: "Warehouse Worker Resume Generator",
+  publisher: "Warehouse Worker Resume Generator",
   openGraph: {
-    title: "ResumePro - Professional Resume Builder",
-    description: "Build professional resumes in seconds with AI-powered resume builder.",
+    title: "Warehouse Worker Resume Generator",
+    description: "Build professional warehouse worker resumes in seconds with AI.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ResumePro - Professional Resume Builder",
-    description: "Create professional, ATS-optimized resumes instantly with AI.",
+    title: "Warehouse Worker Resume Generator",
+    description: "Create professional, ATS-optimized resumes for warehouse workers instantly with AI.",
   },
   robots: {
     index: true,
