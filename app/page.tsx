@@ -59,7 +59,7 @@ const STORAGE_KEYS = {
 const translations = {
   en: {
     // Header
-    appTitle: "ResumePro - Professional Resume Builder",
+    appTitle: "Warehouse Worker Resume Generator",
     appSubtitle: "Create ATS-friendly resumes in seconds with AI",
     resetForm: "Reset form",
     switchToLight: "Switch to light mode",
@@ -162,7 +162,7 @@ const translations = {
   },
   es: {
     // Header
-    appTitle: "ResumePro - Generador de Currculums Profesionales",
+    appTitle: "Generador de Currculums para Trabajadores de Almacén",
     appSubtitle: "Crea currculums optimizados para ATS en segundos con IA",
     resetForm: "Restablecer formulario",
     switchToLight: "Cambiar a modo claro",
@@ -265,7 +265,7 @@ const translations = {
   },
   fr: {
     // Header
-    appTitle: "ResumePro - Générateur de CV Professionnels",
+    appTitle: "Générateur de CV pour Travailleurs d'Entrepôt",
     appSubtitle: "Créez des CV optimisés pour les ATS en quelques secondes avec l'IA",
     resetForm: "Réinitialiser le formulaire",
     switchToLight: "Passer en mode clair",
@@ -368,7 +368,7 @@ const translations = {
   },
   de: {
     // Header
-    appTitle: "ResumePro - Professioneller Lebenslauf-Generator",
+    appTitle: "Lebenslauf-Generator für Lagerarbeiter",
     appSubtitle: "Erstellen Sie ATS-optimierte Lebensläufe in Sekunden mit KI",
     resetForm: "Formular zurcksetzen",
     switchToLight: "Zum hellen Modus wechseln",
