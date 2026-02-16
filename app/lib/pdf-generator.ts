@@ -24,6 +24,13 @@ const COLORS = {
   professional: { primary: [0, 71, 119], secondary: [240, 248, 255], accent: [0, 50, 100] } // Navy Blue
 };
 
+// Helper function to set fill/text/draw color from RGB array
+function setColor(doc: jsPDF, color: number[], type: 'fill' | 'text' | 'draw' = 'fill'): void {
+  const method = type === 'fill' ? 'setFillColor' : type === 'text' ? 'setTextColor' : 'setDrawColor';
+  // @ts-ignore - jsPDF accepts 3 number arguments
+  doc[method](color[0], color[1], color[2]);
+}
+
 /**
  * Parse resume text into structured sections
  */
@@ -78,11 +85,11 @@ export function generateModernResume(data: ResumeData, options: PDFOptions = {})
   let y = margin;
 
   // Add colored header bar
-  doc.setFillColor(...colorScheme.primary);
+  setColor(doc, colorScheme.primary, 'fill');
   doc.rect(0, 0, pageWidth, 40, "F");
 
   // Add name in header
-  doc.setTextColor(255, 255, 255);
+  setColor(doc, [255, 255, 255], 'text');
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
   doc.text(data.name.toUpperCase(), margin, 25);
@@ -101,10 +108,10 @@ export function generateModernResume(data: ResumeData, options: PDFOptions = {})
     }
 
     // Section header with colored background
-    doc.setFillColor(...colorScheme.secondary);
+    setColor(doc, colorScheme.secondary, 'fill');
     doc.rect(margin, y, contentWidth, 10, "F");
 
-    doc.setTextColor(...colorScheme.primary);
+    setColor(doc, colorScheme.primary, 'text');
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text(section.title, margin + 3, y + 7);
@@ -125,7 +132,7 @@ export function generateModernResume(data: ResumeData, options: PDFOptions = {})
 
         // Sub-header
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(...colorScheme.accent);
+        setColor(doc, colorScheme.accent, 'text');
 
         // Check for page break
         if (y > pageHeight - 20) {
@@ -186,16 +193,17 @@ export function generateClassicResume(data: ResumeData, options: PDFOptions = {}
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = options.margin || 15;
+  const contentWidth = pageWidth - margin * 2;
   let y = margin;
 
   // Classic header - centered name with lines
   doc.setFontSize(20);
   doc.setFont("times", "bold");
-  doc.setTextColor(...colorScheme.primary);
+  setColor(doc, colorScheme.primary, 'text');
   doc.text(data.name.toUpperCase(), pageWidth / 2, 20, { align: "center" });
 
   // Decorative lines
-  doc.setDrawColor(...colorScheme.primary);
+  setColor(doc, colorScheme.primary, 'draw');
   doc.setLineWidth(0.5);
   doc.line(margin, 28, pageWidth - margin, 28);
 
@@ -218,7 +226,7 @@ export function generateClassicResume(data: ResumeData, options: PDFOptions = {}
     // Section header - uppercase, centered
     doc.setFontSize(12);
     doc.setFont("times", "bold");
-    doc.setTextColor(...colorScheme.primary);
+    setColor(doc, colorScheme.primary, 'text');
     doc.text(section.title.toUpperCase(), pageWidth / 2, y, { align: "center" });
 
     // Underline for section
@@ -300,10 +308,10 @@ export function generateProfessionalResume(data: ResumeData, options: PDFOptions
   let y = margin;
 
   // Header - name centered
-  doc.setFillColor(...colorScheme.primary);
+  setColor(doc, colorScheme.primary, 'fill');
   doc.rect(0, 0, pageWidth, 35, "F");
 
-  doc.setTextColor(255, 255, 255);
+  setColor(doc, [255, 255, 255], 'text');
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.text(data.name.toUpperCase(), pageWidth / 2, 22, { align: "center" });
@@ -320,17 +328,17 @@ export function generateProfessionalResume(data: ResumeData, options: PDFOptions
     }
 
     // Section header - left aligned bar
-    doc.setFillColor(...colorScheme.primary);
+    setColor(doc, colorScheme.primary, 'fill');
     doc.rect(margin, y, 3, 12, "F");
 
-    doc.setTextColor(...colorScheme.primary);
+    setColor(doc, colorScheme.primary, 'text');
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text(section.title.toUpperCase(), margin + 8, y + 8);
     y += 16;
 
     // Content
-    doc.setTextColor(50, 50, 50);
+    setColor(doc, [50, 50, 50], 'text');
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
 
@@ -347,10 +355,10 @@ export function generateProfessionalResume(data: ResumeData, options: PDFOptions
       if (!isBullet && line.length < 65 && /^[A-Z]/.test(line) && !line.includes("|")) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
-        doc.setTextColor(...colorScheme.accent);
+        setColor(doc, colorScheme.accent, 'text');
         doc.text(text, leftColumn, y);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(80, 80, 80);
+        setColor(doc, [80, 80, 80], 'text');
         y += 5;
       } else {
         const maxWidth = pageWidth - leftColumn - margin - 5;
