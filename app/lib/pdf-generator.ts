@@ -32,6 +32,40 @@ function setColor(doc: jsPDF, color: number[], type: 'fill' | 'text' | 'draw' = 
 }
 
 /**
+ * Sanitize filename - remove special characters and normalize spaces
+ */
+function sanitizeFilename(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .substring(0, 50); // Limit length
+}
+
+/**
+ * Smart text wrapping with better line breaks
+ */
+function wrapTextSmart(doc: jsPDF, text: string, maxWidth: number): string[] {
+  const lines = doc.splitTextToSize(text, maxWidth);
+
+  // Post-process to avoid breaking words when possible
+  const processed: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // If line ends with a hyphenated word, try to move it to next line
+    if (line.endsWith('-') && i < lines.length - 1) {
+      processed.push(line.slice(0, -1) + lines[i + 1]);
+      i++; // Skip next line as we merged it
+    } else {
+      processed.push(line);
+    }
+  }
+
+  return processed;
+}
+
+/**
  * Parse resume text into structured sections
  */
 function parseResume(text: string): ResumeSection[] {
@@ -150,9 +184,9 @@ export function generateModernResume(data: ResumeData, options: PDFOptions = {})
         const isBullet = line.startsWith("-");
         const text = isBullet ? line.substring(1).trim() : line;
 
-        // Word wrap
+        // Smart word wrap with better line breaks
         const maxWidth = contentWidth - (isBullet ? 8 : 0);
-        const lines = doc.splitTextToSize(text, maxWidth);
+        const lines = wrapTextSmart(doc, text, maxWidth);
 
         for (const wrappedLine of lines) {
           if (y > pageHeight - 15) {
@@ -260,7 +294,7 @@ export function generateClassicResume(data: ResumeData, options: PDFOptions = {}
         y += 6;
       } else {
         const maxWidth = contentWidth - 10;
-        const lines = doc.splitTextToSize(text, maxWidth);
+        const lines = wrapTextSmart(doc, text, maxWidth);
 
         for (const wrappedLine of lines) {
           if (y > pageHeight - 15) {
@@ -362,7 +396,7 @@ export function generateProfessionalResume(data: ResumeData, options: PDFOptions
         y += 5;
       } else {
         const maxWidth = pageWidth - leftColumn - margin - 5;
-        const lines = doc.splitTextToSize(text, maxWidth);
+        const lines = wrapTextSmart(doc, text, maxWidth);
 
         for (const wrappedLine of lines) {
           if (y > pageHeight - 15) {
@@ -409,12 +443,17 @@ export function generateResumePDF(data: ResumeData, options: PDFOptions = {}): j
 }
 
 /**
- * Download the resume as a PDF file
+ * Download the resume as a PDF file with improved filename
  */
 export function downloadResumePDF(data: ResumeData, options: PDFOptions = {}): void {
   const doc = generateResumePDF(data, options);
   const template = options.template || "modern";
-  const filename = `${data.name.replace(/\s+/g, "_")}_resume_${template}.pdf`;
+
+  // Sanitize filename and include user name
+  const sanitizedName = sanitizeFilename(data.name);
+  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const filename = `${sanitizedName}_resume_${template}_${date}.pdf`;
+
   doc.save(filename);
 }
 
@@ -424,4 +463,29 @@ export function downloadResumePDF(data: ResumeData, options: PDFOptions = {}): v
 export function generatePDFDataURL(data: ResumeData, options: PDFOptions = {}): string {
   const doc = generateResumePDF(data, options);
   return doc.output("dataurlstring");
+}
+
+/**
+ * Generate PDF with progress callback for async operation simulation
+ */
+export async function downloadResumePDFWithProgress(
+  data: ResumeData,
+  options: PDFOptions = {},
+  onProgress?: (progress: number) => void
+): Promise<void> {
+  return new Promise((resolve) => {
+    // Simulate progress for better UX
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 20;
+      if (onProgress) onProgress(Math.min(progress, 90));
+
+      if (progress >= 100) {
+        clearInterval(interval);
+        downloadResumePDF(data, options);
+        if (onProgress) onProgress(100);
+        resolve();
+      }
+    }, 100);
+  });
 }
