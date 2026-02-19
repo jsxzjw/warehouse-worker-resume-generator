@@ -10,6 +10,8 @@ export interface Step4GenerateProps {
   onDownloadPDF: () => void;
   darkMode?: boolean;
   onUnlockPremium?: () => void;
+  userPlan?: 'free' | 'basic' | 'premium';
+  canDownloadPDF?: boolean;
 }
 
 export function Step4_Generate({
@@ -20,7 +22,9 @@ export function Step4_Generate({
   onGenerate,
   onDownloadPDF,
   darkMode = false,
-  onUnlockPremium
+  onUnlockPremium,
+  userPlan = 'free',
+  canDownloadPDF = false
 }: Step4GenerateProps) {
   return (
     <div className="space-y-6">
@@ -133,19 +137,40 @@ export function Step4_Generate({
           </div>
 
           {/* Download Button */}
-          <button
-            onClick={onDownloadPDF}
-            className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2
-              ${darkMode
-                ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                : "bg-emerald-500 text-white hover:bg-emerald-600"
-              } shadow-md hover:shadow-lg`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Download PDF
-          </button>
+          {userPlan === 'free' ? (
+            // Free users see upgrade prompt instead of download
+            <button
+              onClick={onDownloadPDF}
+              className={`w-full py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2
+                ${darkMode
+                  ? "bg-orange-600 text-white hover:bg-orange-500"
+                  : "bg-orange-500 text-white hover:bg-orange-600"
+                } shadow-md hover:shadow-lg border-2 border-orange-300`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <div className="text-left">
+                <div className="text-sm font-bold">UPGRADE TO DOWNLOAD PDF</div>
+                <div className="text-xs opacity-90">Free users can preview only</div>
+              </div>
+            </button>
+          ) : (
+            // Paid users can download
+            <button
+              onClick={onDownloadPDF}
+              className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2
+                ${darkMode
+                  ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                  : "bg-emerald-500 text-white hover:bg-emerald-600"
+                } shadow-md hover:shadow-lg`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download PDF
+            </button>
+          )}
         </div>
       )}
     </div>

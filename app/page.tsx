@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { downloadResumePDFWithProgress } from "./lib/pdf-generator";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { downloadResumePDF, PDFOptions } from "./lib/pdf-generator";
 import { ToastContainer } from "./components/Toast";
 import { Hero } from "./components/Hero";
 import { FinalCTA } from "./components/FinalCTA";
@@ -16,7 +16,8 @@ import { SocialShare } from "./components/social/SocialShare";
 import { EmailCapture } from "./components/email/EmailCapture";
 import { FullPageLoader } from "./components/ui/LoadingSpinner";
 import { FormWizard } from "./components/wizard/FormWizard";
-
+import { UpgradeModal } from "./components/UpgradeModal";
+import { LoginModal } from "./components/LoginModal";
 // Types
 type Language = "en" | "es";
 
@@ -111,11 +112,21 @@ export default function Home() {
   // UI state
   const [resume, setResume] = useState("");
   const [generating, setGenerating] = useState(false);
+  const wizardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<"modern" | "classic" | "professional">("modern");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [showEmailCapture, setShowEmailCapture] = useState(false);
+
+  // Quota & Upgrade state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState<'monthly_limit_exceeded' | 'template_limit' | 'watermark'>('monthly_limit_exceeded');
+  const [userPlan, setUserPlan] = useState<'free' | 'basic' | 'premium'>('free');
+  const [remainingResumes, setRemainingResumes] = useState(1);
+  const [canDownloadPDF, setCanDownloadPDF] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   // Toast management
   const addToast = useCallback((message: string, type: "success" | "error") => {
@@ -259,6 +270,12 @@ export default function Home() {
   const handleGenerate = useCallback(async () => {
     const t = translations[language];
 
+    // 免费用户必须登录才能生成
+    if (!userEmail && userPlan === 'free') {
+      setShowLoginModal(true);
+      return;
+    }
+
     setGenerating(true);
     setResume("");
 
@@ -328,7 +345,7 @@ Certifications: ${certifications || "N/A"}
     }
   }, [name, contact, experienceList, educationList, skills, certifications, selectedTemplate, language, addToast]);
 
-  // Download PDF
+  // Download PDF with quota checking
   const handleDownloadPDF = useCallback(async () => {
     const t = translations[language];
     if (!resume) {
@@ -340,19 +357,80 @@ Certifications: ${certifications || "N/A"}
     setDownloadProgress(0);
 
     try {
-      await downloadResumePDFWithProgress(
-        { name, resume },
-        { template: selectedTemplate },
-        (progress) => setDownloadProgress(progress)
-      );
-      addToast(t.pdfDownloaded, "success");
+      // 1. 检查用户配额
+      const email = contact.includes('@') ? contact : `${name}@example.com`;
+      const quotaRes = await fetch('/api/quota', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const quotaData = await quotaRes.json();
+
+      if (!quotaData.success) {
+        addToast("Failed to check quota", "error");
+        return;
+      }
+
+      if (!quotaData.allowed) {
+        // 配额用尽，显示升级弹窗
+        setShowUpgradeModal(true);
+        setUpgradeReason('monthly_limit_exceeded');
+        return;
+      }
+
+      // 2. 记录本次使用
+      const recordRes = await fetch('/api/quota', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const recordData = await recordRes.json();
+
+      if (!recordData.success) {
+        addToast("Monthly limit exceeded", "error");
+        setShowUpgradeModal(true);
+        return;
+      }
+
+      // 更新状态
+      setRemainingResumes(recordData.remaining || 0);
+      setUserPlan(recordData.plan || 'free');
+      setCanDownloadPDF(recordData.canDownloadPDF || false);
+
+      // 3. 检查是否可以下载 PDF（免费用户不能下载）
+      if (!recordData.canDownloadPDF) {
+        // 免费用户不能下载，直接显示升级弹窗
+        setShowUpgradeModal(true);
+        setUpgradeReason('monthly_limit_exceeded');
+        addToast("Free users cannot download PDF. Upgrade to Basic or Premium!", "error");
+        return;
+      }
+
+      // 4. 生成 PDF（带或不带水印）
+      const options: PDFOptions = {
+        template: selectedTemplate,
+        watermark: recordData.hasWatermark
+      };
+
+      downloadResumePDF({ name, resume }, options);
+      addToast(recordData.hasWatermark ? "PDF downloaded with watermark" : t.pdfDownloaded, "success");
+
+      // 如果有水印且用户是免费用户，询问是否升级
+      if (recordData.hasWatermark && recordData.plan === 'free') {
+        setTimeout(() => {
+          setShowUpgradeModal(true);
+          setUpgradeReason('watermark');
+        }, 2000);
+      }
+
     } catch (error) {
+      console.error("Download error:", error);
       addToast("Failed to download PDF", "error");
     } finally {
       setDownloading(false);
       setDownloadProgress(0);
     }
-  }, [resume, name, selectedTemplate, language, addToast]);
+  }, [resume, name, contact, selectedTemplate, language, addToast]);
 
   return (
     <main className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-900" : "bg-gradient-to-b from-blue-50 via-white to-slate-50"}`}>
@@ -361,14 +439,14 @@ Certifications: ${certifications || "N/A"}
       {/* Hero Section */}
       <Hero language={language} onStart={() => {
         setCurrentStep(1);
-        window.scrollTo({ top: 500, behavior: "smooth" });
+        wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }} darkMode={darkMode} />
 
       {/* Real Warehouse Resume Examples - Featured Examples */}
       <ResumeExamplesPreviewHome darkMode={darkMode} />
 
       {/* Wizard Section - Main Functionality */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div ref={wizardRef} className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <FormWizard currentStep={currentStep} totalSteps={totalSteps}>
           {/* Step 1: Personal Info */}
           {currentStep === 1 && (
@@ -426,8 +504,11 @@ Certifications: ${certifications || "N/A"}
               onDownloadPDF={handleDownloadPDF}
               darkMode={darkMode}
               onUnlockPremium={() => {
-                addToast("Premium template - Coming soon!", "error");
+                setShowUpgradeModal(true);
+                setUpgradeReason('template_limit');
               }}
+              userPlan={userPlan}
+              canDownloadPDF={canDownloadPDF}
             />
           )}
 
@@ -459,7 +540,7 @@ Certifications: ${certifications || "N/A"}
         darkMode={darkMode}
         onStart={() => {
           setCurrentStep(1);
-          window.scrollTo({ top: 500, behavior: "smooth" });
+          wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         }}
       />
 
@@ -497,6 +578,22 @@ Certifications: ${certifications || "N/A"}
           }}
         />
       )}
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        reason={upgradeReason}
+        currentPlan={userPlan}
+        remaining={remainingResumes}
+      />
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={(email) => setUserEmail(email)}
+      />
 
       {/* Full Page Loader */}
       {generating && (

@@ -11,6 +11,7 @@ export interface PDFOptions {
   fontSize?: number;
   lineHeight?: number;
   margin?: number;
+  watermark?: boolean;
 }
 
 interface ResumeSection {
@@ -214,6 +215,46 @@ export function generateModernResume(data: ResumeData, options: PDFOptions = {})
     doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: "center" });
   }
 
+  // Add watermark for free users
+  if (options.watermark) {
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.saveGraphicsState();
+
+      // Set watermark style
+      doc.setTextColor(200, 200, 200);
+      doc.setFontSize(40);
+      doc.setFont("helvetica", "bold");
+
+      // Rotate and center watermark
+      doc.text(
+        "FREE VERSION",
+        pageWidth / 2,
+        pageHeight / 2,
+        {
+          align: "center",
+          angle: 45,
+          renderingMode: "fill"
+        }
+      );
+
+      doc.setFontSize(20);
+      doc.text(
+        "Upgrade to remove watermark",
+        pageWidth / 2,
+        pageHeight / 2 + 25,
+        {
+          align: "center",
+          angle: 45,
+          renderingMode: "fill"
+        }
+      );
+
+      doc.restoreGraphicsState();
+    }
+  }
+
   return doc;
 }
 
@@ -325,6 +366,46 @@ export function generateClassicResume(data: ResumeData, options: PDFOptions = {}
     doc.text(`- ${i} -`, pageWidth / 2, pageHeight - 10, { align: "center" });
   }
 
+  // Add watermark for free users
+  if (options.watermark) {
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.saveGraphicsState();
+
+      // Set watermark style
+      doc.setTextColor(200, 200, 200);
+      doc.setFontSize(40);
+      doc.setFont("helvetica", "bold");
+
+      // Rotate and center watermark
+      doc.text(
+        "FREE VERSION",
+        pageWidth / 2,
+        pageHeight / 2,
+        {
+          align: "center",
+          angle: 45,
+          renderingMode: "fill"
+        }
+      );
+
+      doc.setFontSize(20);
+      doc.text(
+        "Upgrade to remove watermark",
+        pageWidth / 2,
+        pageHeight / 2 + 25,
+        {
+          align: "center",
+          angle: 45,
+          renderingMode: "fill"
+        }
+      );
+
+      doc.restoreGraphicsState();
+    }
+  }
+
   return doc;
 }
 
@@ -421,6 +502,46 @@ export function generateProfessionalResume(data: ResumeData, options: PDFOptions
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(`${i}`, pageWidth / 2, pageHeight - 8, { align: "center" });
+  }
+
+  // Add watermark for free users
+  if (options.watermark) {
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.saveGraphicsState();
+
+      // Set watermark style
+      doc.setTextColor(200, 200, 200);
+      doc.setFontSize(40);
+      doc.setFont("helvetica", "bold");
+
+      // Rotate and center watermark
+      doc.text(
+        "FREE VERSION",
+        pageWidth / 2,
+        pageHeight / 2,
+        {
+          align: "center",
+          angle: 45,
+          renderingMode: "fill"
+        }
+      );
+
+      doc.setFontSize(20);
+      doc.text(
+        "Upgrade to remove watermark",
+        pageWidth / 2,
+        pageHeight / 2 + 25,
+        {
+          align: "center",
+          angle: 45,
+          renderingMode: "fill"
+        }
+      );
+
+      doc.restoreGraphicsState();
+    }
   }
 
   return doc;
