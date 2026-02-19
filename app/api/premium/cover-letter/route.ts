@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserUsage } from '../../../../lib/quota';
-import { generateCoverLetter } from '../../../../lib/ai/generateCoverLetter';
+import { getUserUsage } from '../../../lib/quota';
+import { generateCoverLetter } from '../../../lib/ai/generateCoverLetter';
 
 export async function POST(req: NextRequest) {
   try {

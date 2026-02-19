@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserUsage } from '../../../../lib/quota';
-import { calculateATSScore } from '../../../../lib/ai/atsScore';
+import { getUserUsage } from '../../../lib/quota';
+import { calculateATSScore } from '../../../lib/ai/atsScore';
 
 export async function POST(req: NextRequest) {
   try {

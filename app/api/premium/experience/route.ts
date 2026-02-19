@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserUsage } from '../../../../lib/quota';
-import { generateTailoredExperience } from '../../../../lib/ai/generateExperience';
+import { getUserUsage } from '../../../lib/quota';
+import { generateTailoredExperience } from '../../../lib/ai/generateExperience';
 
 export async function POST(req: NextRequest) {
   try {
