@@ -1,19 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
+// ==================== 类型定义 ====================
 export interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess?: (email: string) => void;
 }
 
+// ==================== 登录弹窗组件 ====================
 export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // ==================== 登录处理逻辑 ====================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -26,14 +28,25 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     setLoading(true);
 
     try {
-      // 检查用户配额
+      // ==================== 后端：检查用户配额 ====================
       const res = await fetch('/api/quota?email=' + encodeURIComponent(email));
       const data = await res.json();
 
       if (data.success) {
-        // 登录成功
+        // ==================== 登录成功：保存用户信息 ====================
+        localStorage.setItem('userEmail', email);
         onLoginSuccess?.(email);
         onClose();
+
+        // ==================== 检查是否有待处理的套餐选择 ====================
+        const pendingPlan = localStorage.getItem('pendingPlan');
+        if (pendingPlan) {
+          localStorage.removeItem('pendingPlan');
+          // 触发套餐选择弹窗（通过父组件监听 userEmail 变化）
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('showPlanSelection', { detail: { plan: pendingPlan } }));
+          }, 100);
+        }
       } else {
         setError("Failed to login. Please try again.");
       }
@@ -49,7 +62,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-scaleIn">
-        {/* Close Button */}
+        {/* 关闭按钮 */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -59,7 +72,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           </svg>
         </button>
 
-        {/* Header */}
+        {/* 标题 */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,7 +87,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           </p>
         </div>
 
-        {/* Form */}
+        {/* 表单 */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
@@ -97,6 +110,16 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
             </div>
           )}
 
+          {/* ==================== 免费限制提示 ==================== */}
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
+            <p className="font-semibold mb-1">📋 Free Plan Limits:</p>
+            <ul className="text-xs space-y-1">
+              <li>• Only 1 resume ever (not monthly)</li>
+              <li>• Preview only - NO PDF download</li>
+              <li>• Basic template only</li>
+            </ul>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -106,22 +129,24 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           </button>
         </form>
 
-        {/* Info */}
+        {/* 说明 */}
         <div className="mt-6 text-center">
           <p className="text-sm text-slate-500">
             By signing in, you agree to our Terms of Service and Privacy Policy
           </p>
         </div>
 
-        {/* Upgrade CTA */}
+        {/* 升级提示 */}
         <div className="mt-6 pt-6 border-t border-slate-200">
           <p className="text-center text-sm text-slate-600 mb-3">
             Want unlimited downloads and no watermarks?
           </p>
           <button
+            type="button"
             onClick={() => {
               onClose();
-              window.location.href = "/pricing";
+              // 触发套餐选择弹窗
+              window.dispatchEvent(new CustomEvent('showPlanSelection'));
             }}
             className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
           >

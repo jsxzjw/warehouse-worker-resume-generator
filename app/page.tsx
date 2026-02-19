@@ -18,6 +18,7 @@ import { FullPageLoader } from "./components/ui/LoadingSpinner";
 import { FormWizard } from "./components/wizard/FormWizard";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { LoginModal } from "./components/LoginModal";
+import { PlanSelectionModal } from "./components/pricing/PlanSelectionModal";
 // Types
 type Language = "en" | "es";
 
@@ -128,6 +129,9 @@ export default function Home() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [userEmail, setUserEmail] = useState("");
 
+  // ==================== 新增：套餐选择弹窗状态 ====================
+  const [showPlanSelectionModal, setShowPlanSelectionModal] = useState(false);
+
   // Toast management
   const addToast = useCallback((message: string, type: "success" | "error") => {
     const id = Date.now();
@@ -152,6 +156,38 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
   }, []);
+
+  // ==================== 新增：监听登录后套餐选择事件 ====================
+  useEffect(() => {
+    const handleShowPlanSelection = () => {
+      setShowPlanSelectionModal(true);
+    };
+
+    window.addEventListener('showPlanSelection', handleShowPlanSelection);
+    return () => {
+      window.removeEventListener('showPlanSelection', handleShowPlanSelection);
+    };
+  }, []);
+
+  // ==================== 新增：用户登录后加载配额信息 ====================
+  useEffect(() => {
+    const loadUserQuota = async () => {
+      if (userEmail) {
+        try {
+          const res = await fetch(`/api/quota?email=${encodeURIComponent(userEmail)}`);
+          const data = await res.json();
+          if (data.success) {
+            setUserPlan(data.plan || 'free');
+            setRemainingResumes(data.remaining || 0);
+            setCanDownloadPDF(data.canDownloadPDF || false);
+          }
+        } catch (error) {
+          console.error('Failed to load user quota:', error);
+        }
+      }
+    };
+    loadUserQuota();
+  }, [userEmail]);
 
   // Validation functions
   const validateStep1 = useCallback((): boolean => {
@@ -533,11 +569,12 @@ Certifications: ${certifications || "N/A"}
           darkMode={darkMode}
           onSelectPlan={(plan) => {
             if (plan === 'free') {
+              // ==================== Free：直接滑动到表单 ====================
               setCurrentStep(1);
               wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
             } else {
-              // Redirect to pricing page for paid plans
-              window.location.href = "/pricing";
+              // ==================== Basic/Premium：弹出套餐选择弹窗 ====================
+              setShowPlanSelectionModal(true);
             }
           }}
         />
@@ -601,6 +638,31 @@ Certifications: ${certifications || "N/A"}
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onLoginSuccess={(email) => setUserEmail(email)}
+      />
+
+      {/* ==================== 新增：套餐选择弹窗 ==================== */}
+      <PlanSelectionModal
+        isOpen={showPlanSelectionModal}
+        onClose={() => setShowPlanSelectionModal(false)}
+        darkMode={darkMode}
+        onPlanSelect={(plan) => {
+          if (plan === 'free') {
+            // Free：滚动到表单
+            setCurrentStep(1);
+            wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else if (plan === 'basic' || plan === 'premium') {
+            // Basic/Premium：未登录则显示登录弹窗
+            if (!userEmail) {
+              setShowPlanSelectionModal(false);
+              setShowLoginModal(true);
+              // 登录后返回套餐选择
+              localStorage.setItem('pendingPlan', plan);
+            } else {
+              // 已登录：调用支付（已在 PlanSelectionModal 内处理）
+            }
+          }
+        }}
+        userEmail={userEmail}
       />
 
       {/* Full Page Loader */}
