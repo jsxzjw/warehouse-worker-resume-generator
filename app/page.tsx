@@ -532,7 +532,13 @@ Certifications: ${certifications || "N/A"}
         <PricingSection
           darkMode={darkMode}
           onSelectPlan={(plan) => {
-            addToast(`${plan} plan - Coming soon!`, "error");
+            if (plan === 'free') {
+              setCurrentStep(1);
+              wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              // Redirect to pricing page for paid plans
+              window.location.href = "/pricing";
+            }
           }}
         />
       </div>
