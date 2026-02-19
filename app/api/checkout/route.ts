@@ -2,12 +2,25 @@ import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { STRIPE_CONFIG, PRODUCTS } from "../../lib/stripe";
 
-// 初始化 Stripe
-const stripe = new Stripe(STRIPE_CONFIG.secretKey, {
+// 检查 Stripe 是否已配置
+const isStripeConfigured = !!STRIPE_CONFIG.secretKey;
+
+// 初始化 Stripe（仅在配置了密钥时）
+const stripe = isStripeConfigured ? new Stripe(STRIPE_CONFIG.secretKey, {
   apiVersion: "2025-02-24.acacia",
-});
+}) : null;
 
 export async function POST(req: NextRequest) {
+  // 检查 Stripe 是否配置
+  if (!stripe || !isStripeConfigured) {
+    return new Response(JSON.stringify({
+      error: "Payment system is not configured. Please contact support."
+    }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
   try {
     const { email, plan } = await req.json();
 

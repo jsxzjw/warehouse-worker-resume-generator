@@ -4,11 +4,20 @@ import Stripe from "stripe";
 import { STRIPE_CONFIG } from "../../../lib/stripe";
 import { upgradeUserPlan } from "../../../lib/quota";
 
-const stripe = new Stripe(STRIPE_CONFIG.secretKey, {
+// 检查 Stripe 是否已配置
+const isStripeConfigured = !!STRIPE_CONFIG.secretKey;
+
+// 初始化 Stripe（仅在配置了密钥时）
+const stripe = isStripeConfigured ? new Stripe(STRIPE_CONFIG.secretKey, {
   apiVersion: "2025-02-24.acacia",
-});
+}) : null;
 
 export async function POST(req: NextRequest) {
+  // 检查 Stripe 是否配置
+  if (!stripe || !isStripeConfigured) {
+    return new Response("Stripe not configured", { status: 503 });
+  }
+
   try {
     const body = await req.text();
     const headersList = await headers();
@@ -24,7 +33,7 @@ export async function POST(req: NextRequest) {
       event = stripe.webhooks.constructEvent(
         body,
         signature,
-        STRIPE_CONFIG.webhookSecret
+        STRIPE_CONFIG.webhookSecret || ''
       );
     } catch (err) {
       console.error("[Webhook Signature Verification Failed]", err);
