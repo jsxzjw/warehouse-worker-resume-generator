@@ -6,6 +6,7 @@ export interface PricingSectionProps {
   darkMode?: boolean;
 }
 
+// ==================== 默认选中 Basic 套餐 ====================
 export function PricingSection({ onSelectPlan, darkMode = false }: PricingSectionProps) {
   const plans = [
     {
@@ -21,6 +22,7 @@ export function PricingSection({ onSelectPlan, darkMode = false }: PricingSectio
         "Basic support"
       ],
       cta: "Get Started",
+      // Free 不高亮，不默认选中
       highlighted: false
     },
     {
@@ -37,7 +39,8 @@ export function PricingSection({ onSelectPlan, darkMode = false }: PricingSectio
         "Resume storage"
       ],
       cta: "Choose Basic",
-      highlighted: false
+      // ==================== Basic 默认高亮（最受欢迎） ====================
+      highlighted: true
     },
     {
       id: "premium" as const,
@@ -54,7 +57,8 @@ export function PricingSection({ onSelectPlan, darkMode = false }: PricingSectio
         "Lifetime updates"
       ],
       cta: "Choose Premium",
-      highlighted: true
+      // Premium 不高亮，保留可选
+      highlighted: false
     }
   ];
 

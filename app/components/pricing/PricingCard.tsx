@@ -12,6 +12,7 @@ export interface PricingCardProps {
   darkMode?: boolean;
 }
 
+// ==================== 套餐卡片组件 ====================
 export function PricingCard({
   name,
   price,
@@ -31,11 +32,11 @@ export function PricingCard({
       } ${darkMode && highlighted ? "bg-blue-500/10" : ""}
       ${!darkMode && highlighted ? "bg-blue-50" : ""}
     `}>
-      {/* Popular Badge */}
+      {/* ==================== 高亮标签（默认 Basic 显示） ==================== */}
       {highlighted && (
         <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-1/2">
           <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-            POPULAR
+            MOST POPULAR
           </span>
         </div>
       )}
