@@ -509,6 +509,8 @@ Certifications: ${certifications || "N/A"}
               }}
               userPlan={userPlan}
               canDownloadPDF={canDownloadPDF}
+              userEmail={userEmail}
+              userName={name}
             />
           )}
 

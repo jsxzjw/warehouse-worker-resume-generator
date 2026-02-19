@@ -1,5 +1,6 @@
 // 依赖：React
 import { TemplateSelector } from "../../templates/TemplateSelector";
+import { AIPremiumTools } from "../../premium/AIPremiumTools";
 
 export interface Step4GenerateProps {
   selectedTemplate: "modern" | "classic" | "professional";
@@ -12,6 +13,8 @@ export interface Step4GenerateProps {
   onUnlockPremium?: () => void;
   userPlan?: 'free' | 'basic' | 'premium';
   canDownloadPDF?: boolean;
+  userEmail?: string;
+  userName?: string;
 }
 
 export function Step4_Generate({
@@ -24,7 +27,9 @@ export function Step4_Generate({
   darkMode = false,
   onUnlockPremium,
   userPlan = 'free',
-  canDownloadPDF = false
+  canDownloadPDF = false,
+  userEmail = '',
+  userName = ''
 }: Step4GenerateProps) {
   return (
     <div className="space-y-6">
@@ -171,6 +176,80 @@ export function Step4_Generate({
               Download PDF
             </button>
           )}
+        </div>
+      )}
+
+      {/* Premium AI Tools - Only for Premium users */}
+      {userPlan === 'premium' && resume && (
+        <div className={`p-5 rounded-2xl border-2 ${darkMode ? "bg-slate-800 border-purple-500" : "bg-white border-purple-200 shadow-sm"}`}>
+          <div className="flex items-center gap-2 mb-4">
+            <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <h3 className={`font-semibold ${darkMode ? "text-white" : "text-slate-900"}`}>
+              Premium AI Tools
+            </h3>
+            <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? "bg-purple-500/20 text-purple-400" : "bg-purple-100 text-purple-700"}`}>
+              PREMIUM
+            </span>
+          </div>
+
+          <AIPremiumTools
+            darkMode={darkMode}
+            userEmail={userEmail}
+            userName={userName}
+            currentResume={resume}
+            userPlan={userPlan}
+            onUpgradeRequired={onUnlockPremium || (() => {})}
+          />
+        </div>
+      )}
+
+      {/* Premium Upgrade Prompt - For Free/Basic users */}
+      {userPlan !== 'premium' && resume && (
+        <div className={`p-5 rounded-2xl border-2 ${darkMode ? "bg-slate-800 border-orange-500" : "bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200"}`}>
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-xl ${darkMode ? "bg-orange-500/20" : "bg-orange-100"}`}>
+              <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className={`font-bold text-lg mb-2 ${darkMode ? "text-white" : "text-slate-900"}`}>
+                Unlock Premium AI Features
+              </h3>
+              <ul className={`space-y-2 mb-4 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
+                <li className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>AI-powered work experience optimizer</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Smart cover letter generator</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>ATS score & improvement suggestions</span>
+                </li>
+              </ul>
+              <button
+                onClick={onUnlockPremium}
+                className={`w-full py-3 px-6 rounded-xl font-semibold transition-all ${
+                  darkMode
+                    ? "bg-orange-600 text-white hover:bg-orange-500"
+                    : "bg-orange-500 text-white hover:bg-orange-600"
+                } shadow-lg hover:shadow-xl`}
+              >
+                Upgrade to Premium - $9.99
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
