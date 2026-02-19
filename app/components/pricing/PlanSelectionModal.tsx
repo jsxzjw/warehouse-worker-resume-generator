@@ -147,10 +147,10 @@ export function PlanSelectionModal({
       <div className={`rounded-2xl shadow-2xl max-w-6xl w-full p-8 relative ${
         darkMode ? 'bg-slate-800' : 'bg-white'
       }`}>
-        {/* 关闭按钮 */}
+        {/* ==================== 关闭按钮 - 右上角 X ==================== */}
         <button
           onClick={onClose}
-          className={`absolute top-4 right-4 transition-colors ${
+          className={`absolute top-4 right-4 transition-colors z-50 ${
             darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'
           }`}
         >
@@ -178,17 +178,20 @@ export function PlanSelectionModal({
                         : 'border-slate-200'
                 }`}
               >
+                {/* 预选中标签 */}
                 {isPreselected && (
-                  <div className="absolute top-0 right-0 bg-purple-600 text-white px-4 py-1 rounded-bl-lg text-sm font-semibold z-10">
+                  <div className="absolute top-0 right-0 bg-purple-600 text-white px-4 py-1 rounded-bl-lg text-sm font-semibold z-20">
                     SELECTED
                   </div>
                 )}
-                {plan.popular && (
-                  <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-lg text-sm font-semibold">
+                {/* 热门标签 */}
+                {plan.popular && !isPreselected && (
+                  <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-lg text-sm font-semibold z-10">
                     Most Popular
                   </div>
                 )}
 
+                {/* ==================== 头部背景：Premium 紫色，Basic 蓝色，Free 灰色 ==================== */}
                 <div className={`bg-gradient-to-r ${plan.color} p-6 text-white`}>
                   <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
                   <div className="flex items-baseline gap-1 mb-1">
