@@ -573,7 +573,9 @@ Certifications: ${certifications || "N/A"}
               setCurrentStep(1);
               wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
             } else {
-              // ==================== Basic/Premium：弹出套餐选择弹窗 ====================
+              // ==================== Basic/Premium：弹出套餐选择弹窗，自动选中对应套餐 ====================
+              // 保存选中的套餐到 localStorage，供弹窗���用
+              localStorage.setItem('preselectedPlan', plan);
               setShowPlanSelectionModal(true);
             }
           }}

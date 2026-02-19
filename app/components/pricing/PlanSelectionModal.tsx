@@ -21,6 +21,17 @@ export function PlanSelectionModal({
 }: PlanSelectionModalProps) {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
+  // ==================== 从 localStorage 获取预选中的套餐 ====================
+  const getPreselectedPlan = (): 'basic' | 'premium' | null => {
+    if (typeof window !== 'undefined') {
+      const preselected = localStorage.getItem('preselectedPlan');
+      if (preselected === 'basic' || preselected === 'premium') {
+        return preselected;
+      }
+    }
+    return null;
+  };
+
   if (!isOpen) return null;
 
   // ==================== 支付处理逻辑 ====================
@@ -160,17 +171,30 @@ export function PlanSelectionModal({
 
         {/* 套餐卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative rounded-2xl border-2 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-                plan.popular
-                  ? 'border-blue-500 scale-105'
-                  : darkMode
-                    ? 'border-slate-700'
-                    : 'border-slate-200'
-              }`}
-            >
+          {plans.map((plan) => {
+            // ==================== 检查是否是预选中的套餐 ====================
+            const preselectedPlan = getPreselectedPlan();
+            const isPreselected = plan.id === preselectedPlan;
+
+            return (
+              <div
+                key={plan.id}
+                className={`relative rounded-2xl border-2 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                  isPreselected
+                    ? 'border-purple-500 ring-4 ring-purple-200 scale-105'
+                    : plan.popular
+                      ? 'border-blue-500 scale-105'
+                      : darkMode
+                        ? 'border-slate-700'
+                        : 'border-slate-200'
+                }`}
+              >
+                {/* ==================== 预选中标签 ==================== */}
+                {isPreselected && (
+                  <div className="absolute top-0 right-0 bg-purple-600 text-white px-4 py-1 rounded-bl-lg text-sm font-semibold z-10">
+                    SELECTED
+                  </div>
+                )}
               {/* 热门标签 */}
               {plan.popular && (
                 <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-lg text-sm font-semibold">
@@ -240,7 +264,8 @@ export function PlanSelectionModal({
                 </button>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
 
         {/* 信任标识 */}
