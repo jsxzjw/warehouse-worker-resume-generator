@@ -55,19 +55,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     prioritySupport: true
   }
 };
-  basic: {
-    templates: 3,
-    monthlyResumes: -1, // -1 表示无限
-    hasWatermark: false,
-    prioritySupport: true
-  },
-  premium: {
-    templates: 5,
-    monthlyResumes: -1,
-    hasWatermark: false,
-    prioritySupport: true
-  }
-};
 
 // ==================== 数据读写 ====================
 
