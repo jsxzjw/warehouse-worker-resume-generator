@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { headers } from "next/headers";
 import Stripe from "stripe";
-import { STRIPE_CONFIG } from "../../../../lib/stripe";
-import { upgradeUserPlan } from "../../../../lib/quota";
+import { STRIPE_CONFIG } from "../../../lib/stripe";
+import { upgradeUserPlan } from "../../../lib/quota";
 
 const stripe = new Stripe(STRIPE_CONFIG.secretKey, {
   apiVersion: "2025-02-24.acacia",
@@ -11,7 +11,8 @@ const stripe = new Stripe(STRIPE_CONFIG.secretKey, {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text();
-    const signature = headers().get("stripe-signature");
+    const headersList = await headers();
+    const signature = headersList.get("stripe-signature");
 
     if (!signature) {
       return new Response("No signature", { status: 400 });
