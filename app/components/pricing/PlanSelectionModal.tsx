@@ -196,9 +196,9 @@ export function PlanSelectionModal({
                   <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
                   <div className="flex items-baseline gap-1 mb-1">
                     <span className="text-4xl font-bold">{plan.price}</span>
-                    <span className="text-blue-100">/ {plan.period}</span>
+                    <span className="text-white/80">/ {plan.period}</span>
                   </div>
-                  <p className="text-blue-100 text-sm">{plan.description}</p>
+                  <p className="text-white/80 text-sm">{plan.description}</p>
                 </div>
 
                 <div className={`p-6 ${darkMode ? 'bg-slate-700' : 'bg-white'}`}>
@@ -239,11 +239,13 @@ export function PlanSelectionModal({
                     }}
                     disabled={loadingPlan === plan.id}
                     className={`w-full py-3 px-6 rounded-xl font-semibold transition-all duration-200 ${
-                      plan.popular
-                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
-                        : darkMode
-                          ? 'bg-slate-700 text-white hover:bg-slate-600'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      plan.id === 'premium'
+                        ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg hover:shadow-xl'
+                        : plan.popular
+                          ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                          : darkMode
+                            ? 'bg-slate-700 text-white hover:bg-slate-600'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     {loadingPlan === plan.id ? 'Processing...' : plan.cta}
