@@ -28,7 +28,7 @@ interface CreateOrderRequest {
 }
 
 interface CreateOrderResponse {
-  orderId: string;
+  id: string;
   status: string;
   links: Array<{
     href: string;
