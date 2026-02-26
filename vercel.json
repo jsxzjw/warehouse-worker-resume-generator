@@ -1,0 +1,15 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "warehouseworkerresume.com"
+        }
+      ],
+      "destination": "https://www.warehouseworkerresume.com/:path*",
+      "statusCode": 301
+    }
+  ]
+}

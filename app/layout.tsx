@@ -54,7 +54,6 @@ export const metadata: Metadata = {
     url: "https://www.warehouseworkerresume.com",
     siteName: "Warehouse Worker Resume Generator",
     locale: "en_US",
-    alternateLocale: ["es_ES"],
     type: "website",
     images: [
       {
@@ -99,10 +98,6 @@ export const metadata: Metadata = {
   // 其他元标签
   alternates: {
     canonical: "https://www.warehouseworkerresume.com",
-    languages: {
-      "en": "https://www.warehouseworkerresume.com/en",
-      "es": "https://www.warehouseworkerresume.com/es",
-    }
   },
 
   // 应用程序
