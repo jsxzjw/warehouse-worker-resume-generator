@@ -23,12 +23,12 @@ export const ENV = {
   RESEND_API_KEY: process.env.RESEND_API_KEY || "",
 
   // Admin Credentials (生产环境必须设置)
-  ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@warehouseworkerresume.com",
-  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "admin123456",
-  ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || "",
+  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || "admin@warehouseworkerresume.com").trim(),
+  ADMIN_PASSWORD: (process.env.ADMIN_PASSWORD || "admin123456").trim(),
+  ADMIN_PASSWORD_HASH: (process.env.ADMIN_PASSWORD_HASH || "").trim(),
 
   // JWT Configuration
-  JWT_SECRET: process.env.JWT_SECRET || "your-super-secret-jwt-key-min-32-characters-long-change-in-production",
+  JWT_SECRET: (process.env.JWT_SECRET || "your-super-secret-jwt-key-min-32-characters-long-change-in-production").trim(),
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "24h",
 
   // Application
