@@ -224,7 +224,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         );
       }
 
-      const { amount, currency_code } = resource.amount;
+      const { value: amount, currency_code } = resource.amount;
 
       // 检查是否匹配某个套餐
       let matchedPlan: "basic" | "premium" | null = null;
