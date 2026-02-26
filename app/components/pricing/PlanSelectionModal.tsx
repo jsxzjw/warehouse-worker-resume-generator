@@ -1,6 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Script from "next/script";
+
+// ==================== PayPal 配置 ====================
+// 重要：切换 Sandbox/Live 模式
+// - Sandbox: 使用测试环境 Client ID (从 PayPal Developer 账号获取)
+// - Live: 使用生产环境 Client ID
+// 环境变量: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+// PAYPAL_MODE: 设置为 "live" 时使用生产环境，否则使用 Sandbox
+const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
 // ==================== 类型定义 ====================
 export interface PlanSelectionModalProps {
@@ -20,6 +29,7 @@ export function PlanSelectionModal({
   userEmail = ''
 }: PlanSelectionModalProps) {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [paypalLoaded, setPaypalLoaded] = useState(false);
 
   // ==================== 从 localStorage 获取预选中的套餐 ====================
   const getPreselectedPlan = (): 'basic' | 'premium' | null => {
@@ -32,9 +42,58 @@ export function PlanSelectionModal({
     return null;
   };
 
+  // ==================== PayPal 按钮渲染 ====================
+  useEffect(() => {
+    if (!paypalLoaded || !PAYPAL_CLIENT_ID) return;
+
+    // 等待 DOM 准备好
+    const renderButtons = () => {
+      ['basic', 'premium'].forEach((planType) => {
+        const container = document.getElementById(`paypal-button-container-${planType}`);
+        if (!container || container.hasChildNodes()) return;
+
+        // @ts-ignore - PayPal SDK
+        if (window.paypal && window.paypal.Buttons) {
+          // @ts-ignore - PayPal SDK
+          window.paypal.Buttons({
+            style: {
+              layout: 'vertical',
+              color: 'blue',
+              shape: 'rect',
+              label: 'paypal'
+            },
+            createOrder: () => {
+              const orderId = localStorage.getItem('pendingPayPalOrderId');
+              return orderId || '';
+            },
+            onApprove: async () => {
+              // 支付已批准，等待 Webhook 通知
+              alert('Payment successful! Your plan will be activated shortly. Please wait a moment for the confirmation.');
+              onClose();
+              window.location.href = '/';
+            },
+            onError: (err: any) => {
+              console.error('PayPal error:', err);
+              alert('Payment failed. Please try again.');
+              setLoadingPlan(null);
+            },
+            onCancel: () => {
+              console.log('Payment cancelled by user');
+              setLoadingPlan(null);
+            }
+          }).render(container);
+        }
+      });
+    };
+
+    // 延迟渲染，确保 DOM 元素已创建
+    const timer = setTimeout(renderButtons, 100);
+    return () => clearTimeout(timer);
+  }, [paypalLoaded, onClose]);
+
   if (!isOpen) return null;
 
-  // ==================== 支付处理逻辑 ====================
+  // ==================== PayPal 支付处理逻辑 ====================
   const handlePurchase = async (planType: 'basic' | 'premium') => {
     setLoadingPlan(planType);
 
@@ -47,8 +106,8 @@ export function PlanSelectionModal({
         return;
       }
 
-      // 已登录 → 调用 Stripe 支付 API
-      const res = await fetch('/api/checkout', {
+      // 已登录 → 调用 PayPal 创建订单 API
+      const res = await fetch('/api/paypal/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,16 +118,32 @@ export function PlanSelectionModal({
 
       const data = await res.json();
 
-      if (data.url) {
-        // 跳转到 Stripe Checkout
-        window.location.href = data.url;
+      if (data.error) {
+        alert('Failed to create PayPal order: ' + data.error);
+        setLoadingPlan(null);
+        return;
+      }
+
+      if (data.orderId) {
+        // PayPal JS SDK 会在页面加载时自动处理支付
+        // 这里只需要存储 orderId，稍后由 PayPal 按钮使用
+        localStorage.setItem('pendingPayPalOrderId', data.orderId);
+        localStorage.setItem('pendingPayPalPlan', planType);
+
+        // 触发 PayPal 支付流程
+        const paypalButtonContainer = document.getElementById(`paypal-button-container-${planType}`);
+        if (paypalButtonContainer) {
+          paypalButtonContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        setLoadingPlan(null);
       } else {
-        alert('Failed to create checkout session. Please try again.');
+        alert('Failed to create order. Please try again.');
         setLoadingPlan(null);
       }
     } catch (error) {
-      console.error('Checkout error:', error);
-      alert('Failed to create checkout session. Please try again.');
+      console.error('PayPal checkout error:', error);
+      alert('Failed to create order. Please try again.');
       setLoadingPlan(null);
     }
   };
@@ -143,10 +218,22 @@ export function PlanSelectionModal({
 
   // ==================== 渲染 ====================
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className={`rounded-2xl shadow-2xl max-w-6xl w-full p-8 relative ${
-        darkMode ? 'bg-slate-800' : 'bg-white'
-      }`}>
+    <>
+      {/* PayPal JS SDK - 根据环境变量选择 Sandbox 或 Live */}
+      {PAYPAL_CLIENT_ID && (
+        <Script
+          id="paypal-sdk"
+          src={`https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD&intent=capture`}
+          strategy="afterInteractive"
+          onLoad={() => setPaypalLoaded(true)}
+          onReady={() => setPaypalLoaded(true)}
+        />
+      )}
+
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className={`rounded-2xl shadow-2xl max-w-6xl w-full p-8 relative ${
+          darkMode ? 'bg-slate-800' : 'bg-white'
+        }`}>
         {/* ==================== 关闭按钮 - 右上角 X ==================== */}
         <button
           onClick={onClose}
@@ -250,6 +337,19 @@ export function PlanSelectionModal({
                   >
                     {loadingPlan === plan.id ? 'Processing...' : plan.cta}
                   </button>
+
+                  {/* PayPal 按钮容器 - 仅 Basic 和 Premium 显示 */}
+                  {(plan.id === 'basic' || plan.id === 'premium') && PAYPAL_CLIENT_ID && (
+                    <div className="mt-3">
+                      <div
+                        id={`paypal-button-container-${plan.id}`}
+                        className="min-h-[40px]"
+                      />
+                      <p className={`text-xs text-center mt-2 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Pay with PayPal
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -281,5 +381,6 @@ export function PlanSelectionModal({
         </div>
       </div>
     </div>
+    </>
   );
 }

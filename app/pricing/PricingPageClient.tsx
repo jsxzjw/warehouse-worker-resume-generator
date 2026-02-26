@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import Script from "next/script";
 
 const plans = [
   {
@@ -89,6 +90,12 @@ const features = [
 
 export default function PricingPageClient() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [paypalLoaded, setPaypalLoaded] = useState(false);
+
+  // PayPal Client ID - 从环境变量获取，Sandbox 和 Live 使用不同的 Client ID
+  // PAYPAL_CLIENT_ID: 生产环境的 Client ID
+  // PAYPAL_SANDBOX_CLIENT_ID: 测试环境的 Client ID
+  const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   const handlePurchase = async (planType: 'free' | 'basic' | 'premium') => {
     if (planType === 'free') {
@@ -106,7 +113,8 @@ export default function PricingPageClient() {
         return;
       }
 
-      const res = await fetch('/api/checkout', {
+      // 使用 PayPal 创建订单
+      const res = await fetch('/api/paypal/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, plan: planType })
@@ -114,21 +122,94 @@ export default function PricingPageClient() {
 
       const data = await res.json();
 
-      if (data.url) {
-        window.location.href = data.url;
+      if (data.error) {
+        alert('Failed to create PayPal order: ' + data.error);
+        setLoadingPlan(null);
+        return;
+      }
+
+      if (data.orderId) {
+        // 存储 orderId 供 PayPal 按钮使用
+        localStorage.setItem('pendingPayPalOrderId', data.orderId);
+        localStorage.setItem('pendingPayPalPlan', planType);
+
+        // 滚动到 PayPal 按钮位置
+        const paypalContainer = document.getElementById(`paypal-button-container-${planType}`);
+        if (paypalContainer) {
+          paypalContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        setLoadingPlan(null);
       } else {
-        alert('Failed to create checkout session. Please try again.');
+        alert('Failed to create order. Please try again.');
+        setLoadingPlan(null);
       }
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Failed to create checkout session. Please try again.');
-    } finally {
       setLoadingPlan(null);
     }
   };
 
+  // PayPal 按钮渲染
+  useEffect(() => {
+    if (!paypalLoaded || !PAYPAL_CLIENT_ID) return;
+
+    const renderButtons = () => {
+      ['basic', 'premium'].forEach((planType) => {
+        const container = document.getElementById(`paypal-button-container-${planType}`);
+        if (!container || container.hasChildNodes()) return;
+
+        // @ts-ignore - PayPal SDK
+        if (window.paypal && window.paypal.Buttons) {
+          // @ts-ignore - PayPal SDK
+          window.paypal.Buttons({
+            style: {
+              layout: 'vertical',
+              color: 'blue',
+              shape: 'rect',
+              label: 'paypal'
+            },
+            createOrder: () => {
+              const orderId = localStorage.getItem('pendingPayPalOrderId');
+              return orderId || '';
+            },
+            onApprove: async () => {
+              alert('Payment successful! Your plan will be activated shortly. Please wait a moment for the confirmation.');
+              localStorage.removeItem('pendingPayPalOrderId');
+              localStorage.removeItem('pendingPayPalPlan');
+              window.location.href = '/';
+            },
+            onError: (err: any) => {
+              console.error('PayPal error:', err);
+              alert('Payment failed. Please try again.');
+              setLoadingPlan(null);
+            },
+            onCancel: () => {
+              console.log('Payment cancelled by user');
+              setLoadingPlan(null);
+            }
+          }).render(container);
+        }
+      });
+    };
+
+    const timer = setTimeout(renderButtons, 100);
+    return () => clearTimeout(timer);
+  }, [paypalLoaded]);
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-slate-50">
+    <>
+      {/* PayPal JS SDK - 根据环境变量选择 Sandbox 或 Live */}
+      {PAYPAL_CLIENT_ID && (
+        <Script
+          src={`https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD`}
+          strategy="afterInteractive"
+          onReady={() => setPaypalLoaded(true)}
+        />
+      )}
+
+      <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-slate-50">
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -212,6 +293,19 @@ export default function PricingPageClient() {
                 >
                   {loadingPlan === plan.planType ? "Processing..." : plan.cta}
                 </button>
+
+                {/* PayPal 按钮容器 - 仅 Basic 和 Premium 显示 */}
+                {(plan.planType === 'basic' || plan.planType === 'premium') && PAYPAL_CLIENT_ID && (
+                  <div className="mt-3">
+                    <div
+                      id={`paypal-button-container-${plan.planType}`}
+                      className="min-h-[40px]"
+                    />
+                    <p className="text-xs text-center text-slate-500 mt-2">
+                      Pay with PayPal
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -279,5 +373,6 @@ export default function PricingPageClient() {
         </div>
       </section>
     </main>
+    </>
   );
 }
